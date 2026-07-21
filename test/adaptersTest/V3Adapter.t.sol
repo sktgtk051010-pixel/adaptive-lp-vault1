@@ -37,6 +37,22 @@ contract MockToken {
     function approve(address, uint256) external pure returns (bool) { return true; }
 }
 
+contract MockPool {
+    address public immutable token0;
+    address public immutable token1;
+    uint24 public immutable fee;
+
+    constructor(address _token0, address _token1) {
+        token0 = _token0;
+        token1 = _token1;
+        fee = 3000;
+    }
+
+    function slot0() external pure returns (uint160 sqrtPriceX96, int24 tick, uint16 observationIndex, uint16 observationCardinality, uint16 observationCardinalityNext, uint8 feeProtocol, bool unlocked) {
+        return (1 << 96, 0, 0, 0, 0, 0, true);
+    }
+}
+
 contract MockPositionManager {
     struct Position { uint128 liquidity; address token0; address token1; }
     mapping(uint256 => Position) public positionsData;
@@ -80,13 +96,15 @@ contract UniswapV3AdapterTest is Test {
     MockToken public t0;
     MockToken public t1;
     MockPositionManager public posManager;
+    MockPool public pool;
     address user = address(0x1337);
 
     function setUp() public {
         t0 = new MockToken();
         t1 = new MockToken();
         posManager = new MockPositionManager(address(t0), address(t1));
-        adapter = new UniswapV3Adapter(address(posManager), address(0x123), address(0x456));
+        pool = new MockPool(address(t0), address(t1));
+        adapter = new UniswapV3Adapter(address(posManager), address(pool), address(0x456));
         
         t0.mint(user, 1000e18);
         t1.mint(user, 1000e18);
