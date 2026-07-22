@@ -1,66 +1,71 @@
-## Foundry
+## Adaptive LP Vault
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+This repository contains the Solidity vault, oracle, adapters, Foundry tests, and a minimal browser frontend for interacting with a deployed vault on a public testnet.
 
-Foundry consists of:
+## Quick start
 
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+### 1. Install Foundry
 
-## Documentation
+Follow the official Foundry install guide:
 
-https://book.getfoundry.sh/
+https://book.getfoundry.sh/getting-started/installation
 
-## Usage
-
-### Build
+### 2. Build and test
 
 ```shell
-$ forge build
+forge build
+forge test
 ```
 
-### Test
+### 3. Prepare deployment environment
+
+Copy the example environment file and fill in the values for your target network:
 
 ```shell
-$ forge test
+cp .env.example .env
 ```
 
-### Format
+Required values:
+
+- `RPC_URL`: RPC URL for Sepolia, Holesky, Base Sepolia, or another EVM testnet
+- `PRIVATE_KEY`: your wallet private key for deployment
+- `TOKEN0`: address of token 0
+- `TOKEN1`: address of token 1
+- `VAULT_BASE_TOKEN`: one of the two token addresses
+- `ORACLE_TARGET`: address of the liquidity pool or price source used by the oracle
+
+### 4. Deploy to a testnet
 
 ```shell
-$ forge fmt
+./script/deploy-testnet.sh .env
 ```
 
-### Gas Snapshots
+The deploy script will broadcast the adapter, oracle, and vault contracts using the values from your environment file.
+
+### 5. Run the frontend
+
+Serve the frontend directory with any static file server, for example:
 
 ```shell
-$ forge snapshot
+python3 -m http.server 3000 --directory frontend
 ```
 
-### Anvil
+Then open:
 
-```shell
-$ anvil
+```text
+http://localhost:3000/?contract=<DEPLOYED_VAULT_ADDRESS>
 ```
 
-### Deploy
+## Frontend notes
 
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
+The frontend is intentionally minimal and uses ethers.js to connect MetaMask, load a vault contract, and submit deposit/withdraw transactions.
 
-### Cast
+## Contract notes
 
-```shell
-$ cast <subcommand>
-```
+The core contracts are:
 
-### Help
+- [src/AdaptiveIPVault.sol](src/AdaptiveIPVault.sol)
+- [src/TWAPOracle.sol](src/TWAPOracle.sol)
+- [src/adapters/UniswapV2Adapter.sol](src/adapters/UniswapV2Adapter.sol)
+- [src/adapters/UniswapV3Adapter.sol](src/adapters/UniswapV3Adapter.sol)
 
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```

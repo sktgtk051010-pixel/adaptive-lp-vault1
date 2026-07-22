@@ -115,6 +115,12 @@ contract UniswapV3AdapterTest is Test {
         vm.stopPrank();
     }
 
+    function test_Deposit_RevertsWhenPoolHasNoCode() public {
+        UniswapV3Adapter brokenAdapter = new UniswapV3Adapter(address(posManager), address(0x999), address(0x456));
+        vm.expectRevert();
+        brokenAdapter.deposit(1e18, 1e18, 0, 0);
+    }
+
     function test_Withdraw() public {
         vm.startPrank(user);
         adapter.deposit(100e18, 100e18, 0, 0);
@@ -123,9 +129,42 @@ contract UniswapV3AdapterTest is Test {
         vm.stopPrank();
     }
 
+    function test_Withdraw_RevertsOnZeroRatio() public {
+        vm.expectRevert(UniswapV3Adapter.ZeroAmount.selector);
+        adapter.withdraw(0, 0, 0);
+    }
+
     function test_RescueToken() public {
         t0.mint(address(adapter), 10e18);
         adapter.rescueToken(address(t0));
         assertEq(t0.balanceOf(address(this)), 10e18);
+    }
+
+    function test_RescueToken_RevertsWhenBalanceIsZero() public {
+        vm.expectRevert(UniswapV3Adapter.ZeroBalance.selector);
+        adapter.rescueToken(address(t0));
+    }
+
+    function test_SetStrategy_RevertsWhenTickLowerIsHigher() public {
+        vm.expectRevert(UniswapV3Adapter.InvalidTickLower.selector);
+        adapter.setStrategy(100, 50);
+    }
+
+    function test_PositionHelpers_ZeroTokenIdReturnZero() public view {
+        assertEq(adapter.getPositionAmount0(), 0);
+        assertEq(adapter.getPositionAmount1(), 0);
+    }
+
+    function test_SwapTokens_CoversBothDirections() public {
+        vm.startPrank(user);
+        adapter.deposit(100e18, 100e18, 0, 0);
+        vm.expectRevert();
+        adapter.swapTokens(10e18, true, 0);
+        vm.stopPrank();
+    }
+
+    function test_Constructor_RevertsZeroAddress() public {
+        vm.expectRevert(UniswapV3Adapter.ZeroAddress.selector);
+        new UniswapV3Adapter(address(0), address(pool), address(0x456));
     }
 }

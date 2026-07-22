@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Adaptive LP Vault</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.min.js"></script>
+  </head>
+  <body>
+    <main class="container">
+      <h1>Adaptive LP Vault</h1>
+      <p class="subtitle">Connect your wallet, load a deployed vault, and try deposit/withdraw flows on a testnet.</p>
+
+      <div class="actions">
+        <button id="connectBtn">Connect wallet</button>
+        <button id="loadBtn">Load vault</button>
+      </div>
+
+      <div id="status" class="status">Not connected.</div>
+
+      <section class="card">
+        <h2>Vault setup</h2>
+        <label>
+          Vault address
+          <input id="vaultAddress" placeholder="0x..." />
+        </label>
+        <div id="vaultInfo" class="vault-info">No vault loaded.</div>
+      </section>
+
+      <section class="card">
+        <h2>Deposit</h2>
+        <div class="grid">
+          <label>
+            Amount 0
+            <input id="amount0" type="text" placeholder="0.0" />
+          </label>
+          <label>
+            Amount 1
+            <input id="amount1" type="text" placeholder="0.0" />
+          </label>
+          <label>
+            Minimum amount 0
+            <input id="min0" type="text" placeholder="0.0" />
+          </label>
+          <label>
+            Minimum amount 1
+            <input id="min1" type="text" placeholder="0.0" />
+          </label>
+        </div>
+        <button id="depositBtn">Deposit</button>
+      </section>
+
+      <section class="card">
+        <h2>Withdraw</h2>
+        <div class="grid">
+          <label>
+            Shares
+            <input id="shares" type="text" placeholder="0.0" />
+          </label>
+          <label>
+            Minimum amount 0
+            <input id="withdrawMin0" type="text" placeholder="0.0" />
+          </label>
+          <label>
+            Minimum amount 1
+            <input id="withdrawMin1" type="text" placeholder="0.0" />
+          </label>
+        </div>
+        <button id="withdrawBtn">Withdraw</button>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

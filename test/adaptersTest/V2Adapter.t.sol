@@ -165,6 +165,16 @@ contract UniswapV2AdapterTest is Test {
         vm.stopPrank();
     }
 
+    function test_AdapterDeposit_RevertsZeroAmounts() public {
+        vm.expectRevert(UniswapV2Adapter.ZeroAmount.selector);
+        adapter.deposit(0, 1e18, 0, 0);
+    }
+
+    function test_Constructor_RevertsZeroAddress() public {
+        vm.expectRevert(UniswapV2Adapter.ZeroAddress.selector);
+        new UniswapV2Adapter(address(0), address(pair), address(token0), address(token1));
+    }
+
     function test_AdapterWithdraw() public {
 
         pair.setTotalSupply(0);
@@ -196,6 +206,16 @@ contract UniswapV2AdapterTest is Test {
         vm.stopPrank();
     }
 
+    function test_AdapterSwap_UsesToken1WhenDirectionIsFalse() public {
+        vm.startPrank(user);
+        token1.approve(address(adapter), 50e18);
+
+        uint256 amountOutActual = adapter.swapTokens(50e18, false, 40e18);
+
+        assertEq(amountOutActual, 50e18 * 99 / 100);
+        vm.stopPrank();
+    }
+
     function test_AdapterGetCurrentTick() public {
 
         pair.setReserves(100e18, 100e18);
@@ -206,6 +226,22 @@ contract UniswapV2AdapterTest is Test {
         int24 tickHigh = adapter.getCurrentTick();
 
         assertTrue(tickHigh > 0);
+    }
+
+    function test_Withdraw_RevertsOnZeroRatio() public {
+        vm.expectRevert(UniswapV2Adapter.ZeroAmount.selector);
+        adapter.withdraw(0, 0, 0);
+    }
+
+    function test_GetCurrentPrice_RevertsWhenReservesAreZero() public {
+        pair.setReserves(0, 0);
+        vm.expectRevert(UniswapV2Adapter.ZeroAmount.selector);
+        adapter.getCurrentPrice();
+    }
+
+    function test_RescueToken_RevertsWhenBalanceIsZero() public {
+        vm.expectRevert(UniswapV2Adapter.ZeroBalance.selector);
+        adapter.rescueToken(address(token0));
     }
 
 }
