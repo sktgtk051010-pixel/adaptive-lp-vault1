@@ -23,19 +23,23 @@ contract MockVenueAdapter {
     bool public lastIsZeroForOne;
     uint256 public mockAmount0 = 1000e18;
     uint256 public mockAmount1 = 1000e18;
+    bool public shouldRevertWithdraw;
 
     function setMockBalances(uint256 a0, uint256 a1) external {
         mockAmount0 = a0;
         mockAmount1 = a1;
     }
 
+    function setShouldRevertWithdraw(bool value) external {
+        shouldRevertWithdraw = value;
+    }
+
     function getPositionAmount0() external view virtual returns (uint256) { return mockAmount0; }
     function getPositionAmount1() external view virtual returns (uint256) { return mockAmount1; }
     function getCurrentPrice() external view virtual returns (uint256) { return 1e18; }
     function deposit(uint256, uint256, uint256, uint256) external virtual returns (uint256, uint256) { return (100e18, 100e18); }
-    // 将原本巨大的返回值改小
     function withdraw(uint256, uint256, uint256) external virtual returns (uint256, uint256) { 
-        // 返回一个合理的金额，比如 10e18
+        if (shouldRevertWithdraw) revert("withdraw reverted");
         return (10e18, 10e18); 
     }
     function getCurrentTick() external view virtual returns (int24) { return 0; }

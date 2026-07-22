@@ -32,9 +32,17 @@ contract VaultBasicTest is Test {
     }
 
     function test_Deposit() public {
-        // 简单测试一下逻辑通不通，这里只是触发一下
-        // 因为 MockToken 还没写完整的逻辑，这里先测试构造和初始化
+        token0.mint(user, 1000e18);
+        token1.mint(user, 1000e18);
+
+        vm.startPrank(user);
+        token0.approve(address(vault), type(uint256).max);
+        token1.approve(address(vault), type(uint256).max);
+        vault.deposit(100e18, 100e18, 0, 0);
+        vm.stopPrank();
+
         assertEq(address(vault.venueAdapter()), address(adapter));
+        assertEq(vault.balanceOf(user), 200e18);
     }
 
     // 补全：测试取款逻辑
@@ -78,8 +86,68 @@ contract VaultBasicTest is Test {
     // 补全：测试权限（非 owner 调用失败）
     function test_Revert_NotOwner() public {
         vm.startPrank(address(0x999));
-        vm.expectRevert(); // 预期 Ownable 报错
+        vm.expectRevert();
         vault.setBountyConfig(12000, 200e18);
+        vm.stopPrank();
+    }
+
+    function test_PauseAndUnpause() public {
+        vault.pause();
+        assertTrue(vault.paused());
+
+        vm.expectRevert();
+        vault.deposit(1e18, 1e18, 0, 0);
+
+        vault.unpause();
+        assertFalse(vault.paused());
+    }
+
+    function test_Revert_InvalidBaseToken() public {
+        vm.expectRevert(AdaptiveIPVault.InvalidVaultBaseToken.selector);
+        new AdaptiveIPVault(
+            "Vault",
+            "VLT",
+            address(token0),
+            address(token1),
+            address(adapter),
+            address(oracle),
+            address(0x999),
+            11000,
+            100e18
+        );
+    }
+
+    function test_Revert_SameTokenPair() public {
+        vm.expectRevert(AdaptiveIPVault.SameToken.selector);
+        new AdaptiveIPVault(
+            "Vault",
+            "VLT",
+            address(token0),
+            address(token0),
+            address(adapter),
+            address(oracle),
+            address(token0),
+            11000,
+            100e18
+        );
+    }
+
+    function test_WithdrawRevertKeepsShares() public {
+        token0.mint(user, 1000e18);
+        token1.mint(user, 1000e18);
+
+        vm.startPrank(user);
+        token0.approve(address(vault), type(uint256).max);
+        token1.approve(address(vault), type(uint256).max);
+        vault.deposit(100e18, 100e18, 0, 0);
+
+        uint256 sharesBefore = vault.balanceOf(user);
+        adapter.setShouldRevertWithdraw(true);
+
+        vm.expectRevert();
+        vault.withdraw(sharesBefore, 0, 0);
+
+        assertEq(vault.balanceOf(user), sharesBefore);
         vm.stopPrank();
     }
 }

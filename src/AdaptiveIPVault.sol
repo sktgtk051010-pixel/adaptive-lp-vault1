@@ -51,6 +51,8 @@ contract AdaptiveIPVault is ERC20,Ownable,Pausable,ReentrancyGuard {
     error InvalidAmount();
     error InvalidCooldownSeconds();
     error NotReadyToRebalance();
+    error SameToken();
+    error InvalidVaultBaseToken();
 
     event VaultDeposit(address indexed sender, uint256 amount0, uint256 amount1, uint256 shares);
     event VaultWithdraw(address indexed sender, uint256 amount0, uint256 amount1, uint256 shares);
@@ -72,6 +74,8 @@ contract AdaptiveIPVault is ERC20,Ownable,Pausable,ReentrancyGuard {
         ERC20(tokenName,tokenSign)
         Ownable(msg.sender){
             if(_token0 == address(0) || _token1 == address(0) || _adapter == address(0)) revert ZeroAddress();
+            if(_token0 == _token1) revert SameToken();
+            if(_vaultBaseToken != _token0 && _vaultBaseToken != _token1) revert InvalidVaultBaseToken();
             venueAdapter = IVenueAdapter(_adapter);
             token0 = _token0;
             token1 = _token1;

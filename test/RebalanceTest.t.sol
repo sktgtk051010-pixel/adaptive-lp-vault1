@@ -43,24 +43,21 @@ contract RebalanceTest is Test {
     }
 
     function test_Rebalance_SwapLogic_FullCheck() public {
-        // 1. 设置 Token0 价值大于 Token1，强制触发 swap 逻辑
         adapter.setMockBalances(2000e18, 100e18);
-        oracle.setTicks(1000, 0); // 触发 Panic
+        oracle.setTicks(1000, 0); 
         
         token0.mint(address(vault), 1000e18);
         token1.mint(address(vault), 100e18);
         
-        // 2. 执行
         vault.rebalance();
-        
-        // 3. 验证 Swap 方向
+    
         assertTrue(adapter.lastIsZeroForOne(), "Should swap 0 for 1");
         assertGt(adapter.lastSwapAmount(), 0, "Swap amount must be positive");
     }
 
     function test_Revert_RebalanceNotReady() public {
         oracle.setTicks(0, 0); 
-        vm.expectRevert(); // 预期未准备好报错
+        vm.expectRevert();
         vault.rebalance();
     }
 }
