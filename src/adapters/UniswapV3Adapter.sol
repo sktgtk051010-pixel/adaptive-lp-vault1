@@ -9,7 +9,6 @@ import {FullMath} from "../compat/FullMath.sol";
 import {LiquidityAmounts} from "../compat/LiquidityAmounts.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import "forge-std/console.sol";
 
 interface INonfungiblePositionManager
 {
@@ -128,7 +127,7 @@ contract UniswapV3Adapter is IVenueAdapter,Ownable {
     ISwapRouter public immutable router;
     uint256 public constant EXPIRE_TIME = 300;
     uint256 public constant PRECISION = 1e18;
-    uint256 public constant slippageBps = 50;
+    uint256 public constant SLIPPAGE_BPS = 50;
     int24 public myTickLower;
     int24 public myTickUpper;
     
@@ -156,11 +155,9 @@ contract UniswapV3Adapter is IVenueAdapter,Ownable {
         address token0;
         address token1;
 
-        console.log("Pool Code Length: ", address(pool).code.length);
         require(address(pool).code.length > 0, "Address has no code!"); 
 
         if (tokenId == 0) {
-            console.log("Current Pool Address: ", address(pool)); 
             require(address(pool) != address(0), "Pool address is zero!");
             token0 = pool.token0();
             token1 = pool.token1();

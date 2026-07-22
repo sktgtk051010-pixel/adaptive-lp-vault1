@@ -7,8 +7,6 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {UniswapV2Adapter} from "../src/adapters/UniswapV2Adapter.sol";
-import {UniswapV3Adapter} from "../src/adapters/UniswapV3Adapter.sol";
 import {IVenueAdapter} from "../src/interface/IVenueAdapter.sol";
 import {FullMath} from "../src/compat/FullMath.sol";
 import {TickMath} from "../src/compat/TickMath.sol";
@@ -26,14 +24,14 @@ contract AdaptiveIPVault is ERC20,Ownable,Pausable,ReentrancyGuard {
 
     CooldownTier[] public cooldownTiers;
 
-    address public immutable token0;
-    address public immutable token1;
+    address public immutable TOKEN0;
+    address public immutable TOKEN1;
 
     IVenueAdapter public venueAdapter;
-    TWAPOracle public immutable oracle;
+    TWAPOracle public immutable ORACLE;
 
     uint256 public constant PRECISION = 1e18;
-    uint256 public constant slippageBps = 50;
+    uint256 public constant SLIPPAGE_BPS = 50;
     uint256 public constant BPS_DENOMINATOR = 10000;
     uint256 public constant POST_EXECUTION_GAS_BASELINE = 26000;
     uint256 public premiumMultiplierBps;
@@ -44,7 +42,7 @@ contract AdaptiveIPVault is ERC20,Ownable,Pausable,ReentrancyGuard {
     uint32 public constant MIN_COOLDOWN_LIMIT = 300;
     uint32 public baseMinCooldown = 3600;
 
-    bool public immutable isToken0Base;
+    bool public immutable IS_TOKEN0_BASE;
     
     error ZeroAmount();
     error ZeroAddress();
@@ -77,11 +75,11 @@ contract AdaptiveIPVault is ERC20,Ownable,Pausable,ReentrancyGuard {
             if(_token0 == _token1) revert SameToken();
             if(_vaultBaseToken != _token0 && _vaultBaseToken != _token1) revert InvalidVaultBaseToken();
             venueAdapter = IVenueAdapter(_adapter);
-            token0 = _token0;
-            token1 = _token1;
-            oracle = TWAPOracle(_oracle);
+            TOKEN0 = _token0;
+            TOKEN1 = _token1;
+            ORACLE = TWAPOracle(_oracle);
 
-            isToken0Base = (_token0 == _vaultBaseToken);
+            IS_TOKEN0_BASE = (_token0 == _vaultBaseToken);
 
             if(_premiumMultiplierBps < BPS_DENOMINATOR) revert InvalidAmount();
             if(_maxRewardLimit == 0) revert ZeroAmount();
@@ -126,7 +124,7 @@ contract AdaptiveIPVault is ERC20,Ownable,Pausable,ReentrancyGuard {
             uint256 value0;
             uint256 value1;
             uint256 price = venueAdapter.getCurrentPrice();
-            if(isToken0Base) {
+            if(IS_TOKEN0_BASE) {
                 value0 = reserve0;
                 value1 = FullMath.mulDiv(reserve1, PRECISION, price);
             }else{
@@ -143,11 +141,11 @@ contract AdaptiveIPVault is ERC20,Ownable,Pausable,ReentrancyGuard {
             amount = amount0 + amount1;
         }
 
-        IERC20(token0).safeTransferFrom(msg.sender,address(this),amount0);
-        IERC20(token1).safeTransferFrom(msg.sender,address(this),amount1);
+        IERC20(TOKEN0).safeTransferFrom(msg.sender,address(this),amount0);
+        IERC20(TOKEN1).safeTransferFrom(msg.sender,address(this),amount1);
 
-        IERC20(token0).forceApprove(address(venueAdapter), amount0);
-        IERC20(token1).forceApprove(address(venueAdapter), amount1);
+        IERC20(TOKEN0).forceApprove(address(venueAdapter), amount0);
+        IERC20(TOKEN1).forceApprove(address(venueAdapter), amount1);
         
         venueAdapter.deposit(amount0, amount1, amount0Min, amount1Min);
 
@@ -160,8 +158,8 @@ contract AdaptiveIPVault is ERC20,Ownable,Pausable,ReentrancyGuard {
 
         _mint(msg.sender, shares);
 
-        IERC20(token0).forceApprove(address(venueAdapter), 0);
-        IERC20(token1).forceApprove(address(venueAdapter), 0);
+        IERC20(TOKEN0).forceApprove(address(venueAdapter), 0);
+        IERC20(TOKEN1).forceApprove(address(venueAdapter), 0);
 
         emit VaultDeposit(msg.sender, amount0, amount1, shares);
     }
@@ -176,8 +174,8 @@ contract AdaptiveIPVault is ERC20,Ownable,Pausable,ReentrancyGuard {
         _burn(msg.sender, shares);
 
         (uint256 amount0, uint256 amount1) = venueAdapter.withdraw(shareRatio, minAmount0, minAmount1);
-        IERC20(token0).safeTransfer(msg.sender, amount0);
-        IERC20(token1).safeTransfer(msg.sender, amount1);
+        IERC20(TOKEN0).safeTransfer(msg.sender, amount0);
+        IERC20(TOKEN1).safeTransfer(msg.sender, amount1);
 
         emit VaultWithdraw(msg.sender, amount0, amount1, shares);
     }
@@ -201,14 +199,14 @@ contract AdaptiveIPVault is ERC20,Ownable,Pausable,ReentrancyGuard {
         uint256 reserve1 = venueAdapter.getPositionAmount1();
 
         uint256 price = venueAdapter.getCurrentPrice();
-        int24 fastTwapTick = oracle.getFastTwapTick();
+        int24 fastTwapTick = ORACLE.getFastTwapTick();
 
         uint160 sqrtPriceX96 = TickMath.getSqrtRatioAtTick(fastTwapTick);
 
         uint256 value0;
         uint256 value1;
 
-        if(isToken0Base) {
+        if(IS_TOKEN0_BASE) {
             value0 = reserve0;
             value1 = FullMath.mulDiv(reserve1, PRECISION, price);
         }else{
@@ -226,33 +224,33 @@ contract AdaptiveIPVault is ERC20,Ownable,Pausable,ReentrancyGuard {
         if(value0 > value1){
             isZeroForOne = true;
             excessValue = value0 - value1;//谁是本位币，这里就用谁计价的
-            amountToSwap = isToken0Base
+            amountToSwap = IS_TOKEN0_BASE
                 ? excessValue / 2
                 : FullMath.mulDiv(excessValue / 2, PRECISION, price);
         } else if(value1 > value0){
             isZeroForOne = false;
             excessValue = value1 - value0;
-            amountToSwap = isToken0Base
+            amountToSwap = IS_TOKEN0_BASE
                 ? FullMath.mulDiv(excessValue / 2, price, PRECISION)
                 : excessValue / 2;
         }
 
         if (amountToSwap > 0) {
             if (isZeroForOne) {
-                expectedOut = isToken0Base 
+                expectedOut = IS_TOKEN0_BASE 
                     ? FullMath.mulDiv(amountToSwap, twapPrice, PRECISION)
                     : FullMath.mulDiv(amountToSwap, PRECISION, twapPrice);
             } else {
-                expectedOut = isToken0Base 
+                expectedOut = IS_TOKEN0_BASE 
                     ? FullMath.mulDiv(amountToSwap, PRECISION, twapPrice)
                     : FullMath.mulDiv(amountToSwap, twapPrice, PRECISION);
             }
         }
-        uint256 amountOutMin = FullMath.mulDiv(expectedOut, BPS_DENOMINATOR-slippageBps, BPS_DENOMINATOR);
+        uint256 amountOutMin = FullMath.mulDiv(expectedOut, BPS_DENOMINATOR-SLIPPAGE_BPS, BPS_DENOMINATOR);
         venueAdapter.swapTokens(amountToSwap, isZeroForOne, amountOutMin);
 
-        uint256 bal0 = IERC20(token0).balanceOf(address(this));
-        uint256 bal1 = IERC20(token1).balanceOf(address(this));
+        uint256 bal0 = IERC20(TOKEN0).balanceOf(address(this));
+        uint256 bal1 = IERC20(TOKEN1).balanceOf(address(this));
         uint256 amount0Min;
         uint256 amount1Min;
 
@@ -260,15 +258,15 @@ contract AdaptiveIPVault is ERC20,Ownable,Pausable,ReentrancyGuard {
         uint256 amount1Required = _getEquivalentAmount(bal0 , reserve1, reserve0);
 
         if(amount1Required <= bal1){
-            amount0Min = FullMath.mulDiv(bal0, BPS_DENOMINATOR-slippageBps, BPS_DENOMINATOR);
-            amount1Min = FullMath.mulDiv(amount1Required, BPS_DENOMINATOR-slippageBps, BPS_DENOMINATOR);
+            amount0Min = FullMath.mulDiv(bal0, BPS_DENOMINATOR-SLIPPAGE_BPS, BPS_DENOMINATOR);
+            amount1Min = FullMath.mulDiv(amount1Required, BPS_DENOMINATOR-SLIPPAGE_BPS, BPS_DENOMINATOR);
         }else{
-            amount0Min = FullMath.mulDiv(amount0Required, BPS_DENOMINATOR-slippageBps, BPS_DENOMINATOR);
-            amount1Min = FullMath.mulDiv(bal1, BPS_DENOMINATOR-slippageBps, BPS_DENOMINATOR);
+            amount0Min = FullMath.mulDiv(amount0Required, BPS_DENOMINATOR-SLIPPAGE_BPS, BPS_DENOMINATOR);
+            amount1Min = FullMath.mulDiv(bal1, BPS_DENOMINATOR-SLIPPAGE_BPS, BPS_DENOMINATOR);
         }
 
-        IERC20(token0).forceApprove(address(venueAdapter), bal0);
-        IERC20(token1).forceApprove(address(venueAdapter), bal1);
+        IERC20(TOKEN0).forceApprove(address(venueAdapter), bal0);
+        IERC20(TOKEN1).forceApprove(address(venueAdapter), bal1);
 
         (uint256 amount0Used, uint256 amount1Used) = venueAdapter.deposit(bal0, bal1, amount0Min, amount1Min);
 
@@ -279,7 +277,7 @@ contract AdaptiveIPVault is ERC20,Ownable,Pausable,ReentrancyGuard {
     }
 
     function _payKeeperReward(uint256 startGas) internal {
-        uint256 totalGasUsed = startGas - gasleft() + POST_EXECUTION_GAS_BASELINE ;
+        uint256 totalGasUsed = startGas - gasleft() + POST_EXECUTION_GAS_BASELINE;
 
         uint256 baseGasCost = totalGasUsed * tx.gasprice;
 
@@ -291,21 +289,21 @@ contract AdaptiveIPVault is ERC20,Ownable,Pausable,ReentrancyGuard {
 
         uint256 vaultBal;
 
-        if(isToken0Base){
-            vaultBal = IERC20(token0).balanceOf(address(this));
+        if(IS_TOKEN0_BASE){
+            vaultBal = IERC20(TOKEN0).balanceOf(address(this));
             if(keeperRewardAmount > vaultBal) {
                 keeperRewardAmount = vaultBal;
             }
             if(vaultBal > 0){
-                IERC20(token0).safeTransfer(msg.sender, keeperRewardAmount);
+                IERC20(TOKEN0).safeTransfer(msg.sender, keeperRewardAmount);
             }
         }else{
-            vaultBal = IERC20(token1).balanceOf(address(this));
+            vaultBal = IERC20(TOKEN1).balanceOf(address(this));
             if(keeperRewardAmount > vaultBal) {
                 keeperRewardAmount = vaultBal;
             }
             if(vaultBal > 0){
-                IERC20(token1).safeTransfer(msg.sender, keeperRewardAmount);
+                IERC20(TOKEN1).safeTransfer(msg.sender, keeperRewardAmount);
             }
         }
 
@@ -314,8 +312,8 @@ contract AdaptiveIPVault is ERC20,Ownable,Pausable,ReentrancyGuard {
 
     function _shouldRebalance() internal view returns (bool) {
 
-        int24 fastTwapTick = oracle.getFastTwapTick();
-        int24 slowTwapTick = oracle.getTwapTick();
+        int24 fastTwapTick = ORACLE.getFastTwapTick();
+        int24 slowTwapTick = ORACLE.getTwapTick();
 
         uint24 realMarketDeviation = fastTwapTick > slowTwapTick
             ? uint24(fastTwapTick - slowTwapTick)
@@ -351,7 +349,7 @@ contract AdaptiveIPVault is ERC20,Ownable,Pausable,ReentrancyGuard {
     }
 
     function _getCurrentTickDelta() internal view returns (uint24 tickDelta) {
-        int24 tick = oracle.getTwapTick();
+        int24 tick = ORACLE.getTwapTick();
         int24 currentTick = venueAdapter.getCurrentTick();
         tickDelta = (currentTick > tick ? uint24(currentTick - tick) : uint24(tick - currentTick));
     }

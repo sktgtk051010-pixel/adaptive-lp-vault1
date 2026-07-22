@@ -55,7 +55,7 @@ contract UniswapV2Adapter is IVenueAdapter, Ownable {
     
     uint256 public constant EXPIRE_TIME = 300;
     uint256 public constant PRECISION = 1e18;
-    uint256 public constant slippageBps = 50;
+    uint256 public constant SLIPPAGE_BPS = 50;
 
     error ZeroAddress();
     error ZeroAmount();
@@ -133,19 +133,19 @@ contract UniswapV2Adapter is IVenueAdapter, Ownable {
 
         (uint112 reserve0, , ) = pair.getReserves();
 
-        uint256 myLPBalance = IERC20(address(pair)).balanceOf(msg.sender);
+        uint256 myLpBalance = IERC20(address(pair)).balanceOf(msg.sender);
         uint256 LPTotalSupply = pair.totalSupply();
 
-        return _calculateShares(myLPBalance, uint256(reserve0), LPTotalSupply);
+        return _calculateShares(myLpBalance, uint256(reserve0), LPTotalSupply);
     }
 
     function getPositionAmount1() external view override returns (uint256) {
         ( , uint112 reserve1, ) = pair.getReserves();
 
-        uint256 myLPBalance = IERC20(address(pair)).balanceOf(msg.sender);
+        uint256 myLpBalance = IERC20(address(pair)).balanceOf(msg.sender);
         uint256 LPTotalSupply = pair.totalSupply();
 
-        return _calculateShares(myLPBalance, uint256(reserve1), LPTotalSupply);
+        return _calculateShares(myLpBalance, uint256(reserve1), LPTotalSupply);
     }
 
 

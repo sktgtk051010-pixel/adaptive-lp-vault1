@@ -42,6 +42,8 @@ const elements = {
   withdrawMin1: document.getElementById("withdrawMin1")
 };
 
+const SEPOLIA_CHAIN_ID = "0xAA36A7";
+
 const state = {
   provider: null,
   signer: null,
@@ -73,6 +75,34 @@ function getVaultAddress() {
   return value;
 }
 
+async function ensureSepoliaNetwork() {
+  if (!window.ethereum) {
+    throw new Error("Install MetaMask or another Ethereum wallet provider.");
+  }
+
+  try {
+    await window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: SEPOLIA_CHAIN_ID }]
+    });
+  } catch (error) {
+    if (error.code === 4902) {
+      await window.ethereum.request({
+        method: "wallet_addEthereumChain",
+        params: [{
+          chainId: SEPOLIA_CHAIN_ID,
+          chainName: "Sepolia",
+          nativeCurrency: { name: "Sepolia Ether", symbol: "SEP", decimals: 18 },
+          rpcUrls: ["https://ethereum-sepolia-rpc.publicnode.com"],
+          blockExplorerUrls: ["https://sepolia.etherscan.io"]
+        }]
+      });
+    } else {
+      throw error;
+    }
+  }
+}
+
 async function connectWallet() {
   if (!window.ethereum) {
     setStatus("Install MetaMask or another Ethereum wallet provider.", true);
@@ -80,6 +110,7 @@ async function connectWallet() {
   }
 
   try {
+    await ensureSepoliaNetwork();
     const provider = new ethers.BrowserProvider(window.ethereum);
     const accounts = await provider.send("eth_requestAccounts", []);
     const signer = await provider.getSigner();
@@ -219,6 +250,12 @@ const contractParam = new URLSearchParams(window.location.search).get("contract"
 if (contractParam) {
   elements.vaultAddress.value = contractParam;
 }
+
+window.addEventListener("load", () => {
+  if (contractParam) {
+    setStatus(`Vault prefilled. Connect wallet to continue.`);
+  }
+});
 
 elements.connectBtn.addEventListener("click", connectWallet);
 elements.loadBtn.addEventListener("click", loadVault);
